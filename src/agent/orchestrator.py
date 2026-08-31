@@ -90,6 +90,31 @@ def analyse_project(context: ProjectContext) -> AgentResponse:
             or code_analysis["has_logistic_model"]
         ):
 
+            # If evaluation has already been performed,
+            # move the student toward interpretation instead
+            # of generating the same evaluation code again.
+            if code_analysis["has_evaluation"]:
+                return AgentResponse(
+                    current_stage="Model evaluation completed",
+                    next_task=(
+                        "Interpret the model results and assess "
+                        "statistical significance"
+                    ),
+                    recommended_approach=(
+                        "Review model performance metrics, coefficient estimates, "
+                        "statistical significance and practical relevance before "
+                        "deciding whether further modelling is required."
+                    ),
+                    implementation=(
+                        "# Interpretation should be based on the model results."
+                    ),
+                    explanation=(
+                        "Your existing code already contains model evaluation "
+                        "steps. The next stage is therefore to interpret the "
+                        "results rather than repeating the evaluation."
+                    ),
+                )
+
             if any(
                 word in requirements
                 for word in ["evaluate", "evaluation", "performance", "compare"]
@@ -256,3 +281,4 @@ auc(roc_curve)
 """
 
     return "# Classification evaluation for this language will be added."
+

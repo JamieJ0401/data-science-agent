@@ -1,4 +1,6 @@
+
 from dataclasses import dataclass
+
 
 def inspect_existing_code(code: str) -> dict:
     """
@@ -81,7 +83,13 @@ def analyse_project(context: ProjectContext) -> AgentResponse:
     code_analysis = inspect_existing_code(context.existing_code)
 
     if "classification" in task:
-        if "logistic" in progress or "logistic regression" in progress or code_analysis["has_logistic_model"]:
+
+        if (
+            "logistic" in progress
+            or "logistic regression" in progress
+            or code_analysis["has_logistic_model"]
+        ):
+
             if any(
                 word in requirements
                 for word in ["evaluate", "evaluation", "performance", "compare"]
@@ -94,7 +102,8 @@ def analyse_project(context: ProjectContext) -> AgentResponse:
                         "using a confusion matrix, ROC-AUC, sensitivity and specificity."
                     ),
                     implementation=_classification_evaluation_code(
-                        context.programming_language
+                        context.programming_language,
+                        has_predictions=code_analysis["has_predictions"],
                     ),
                     explanation=(
                         "You have already fitted a logistic regression model. "
@@ -184,7 +193,7 @@ def _logistic_diagnostics_code(language):
     if language == "Python":
         return """from sklearn.metrics import classification_report, roc_auc_score
 
-predicted_probability = model.predict(X_test)
+predicted_probability = model.predict_proba(X_test)[:, 1]
 predicted_class = (predicted_probability >= 0.5).astype(int)
 
 print(classification_report(y_test, predicted_class))
@@ -203,15 +212,30 @@ auc(roc_curve)
     return "# Diagnostic implementation for this language will be added."
 
 
-def _classification_evaluation_code(language):
+def _classification_evaluation_code(language, has_predictions=False):
     if language == "Python":
+
+        if has_predictions:
+            return """from sklearn.metrics import (
+    confusion_matrix,
+    classification_report,
+    roc_auc_score
+)
+
+predicted_class = (predicted_probability >= 0.5).astype(int)
+
+print(confusion_matrix(y_test, predicted_class))
+print(classification_report(y_test, predicted_class))
+print("ROC-AUC:", roc_auc_score(y_test, predicted_probability))
+"""
+
         return """from sklearn.metrics import (
     confusion_matrix,
     classification_report,
     roc_auc_score
 )
 
-predicted_probability = model.predict(X_test)
+predicted_probability = model.predict_proba(X_test)[:, 1]
 predicted_class = (predicted_probability >= 0.5).astype(int)
 
 print(confusion_matrix(y_test, predicted_class))
